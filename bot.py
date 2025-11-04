@@ -174,7 +174,7 @@ async def handle_text(message: types.Message):
 
         if state["step"] == "waiting_price":
             price = float(message.text.replace(",", "."))
-            usd_total = (price / 6.8) * 1.331 + state["weight"]*7.5
+            usd_total = (price / 6.8) * 1.331 + state["weight"]*7.5 + 1
 
             caption = (
                 f"✅ Расчёт завершён\n\n"
@@ -226,3 +226,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
