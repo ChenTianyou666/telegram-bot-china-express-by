@@ -205,7 +205,8 @@ async def handle_text(message: types.Message):
 
             user_state.pop(uid, None)
     except Exception as e:
-        logging.error(f"handle_text error: {e}")
+       logging.error(f"handle_text error: {e}")
+
 
 # ===================== 定时清理照片文件夹 =====================
 async def cleanup_photos():
@@ -240,3 +241,4 @@ app.on_shutdown.append(on_shutdown)
 
 if __name__ == "__main__":
     web.run_app(app, host="0.0.0.0", port=PORT)
+
