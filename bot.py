@@ -21,9 +21,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # 例: https://chinaexpressby.com/
 PORT = int(os.getenv("PORT", 8000))
 
-if not BOT_TOKEN:
-    logging.error("❌ BOT_TOKEN not found in .env or environment variables")
-    raise ValueError("BOT_TOKEN not found!")
+if not BOT_TOKEN or not WEBHOOK_URL:
+    logging.error("❌ BOT_TOKEN or WEBHOOK_URL not found in .env")
+    raise ValueError("BOT_TOKEN or WEBHOOK_URL missing!")
 
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
@@ -205,4 +205,38 @@ async def handle_text(message: types.Message):
 
             user_state.pop(uid, None)
     except Exception as e:
-        logging.error(f"handle_text error: {
+        logging.error(f"handle_text error: {e}")
+
+# ===================== 定时清理照片文件夹 =====================
+async def cleanup_photos():
+    while True:
+        try:
+            now = time.time()
+            for filename in os.listdir("photos"):
+                filepath = os.path.join("photos", filename)
+                if os.path.isfile(filepath) and now - os.path.getmtime(filepath) > 24*3600:  # 24小时
+                    os.remove(filepath)
+                    logging.info(f"Deleted old photo: {filename}")
+        except Exception as e:
+            logging.error(f"cleanup_photos error: {e}")
+        await asyncio.sleep(3600)
+
+# ===================== Webhook 启动 =====================
+async def on_startup(app):
+    await set_bot_commands()
+    await bot.delete_webhook()
+    await bot.set_webhook(WEBHOOK_URL)
+    asyncio.create_task(cleanup_photos())
+    logging.info("✅ Bot started with webhook...")
+
+async def on_shutdown(app):
+    await bot.delete_webhook()
+    await bot.session.close()
+
+app = web.Application()
+SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/")
+app.on_startup.append(on_startup)
+app.on_shutdown.append(on_shutdown)
+
+if __name__ == "__main__":
+    web.run_app(app, host="0.0.0.0", port=PORT)
