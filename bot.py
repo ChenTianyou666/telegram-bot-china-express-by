@@ -7,8 +7,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFil
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-from aiohttp import web
 from dotenv import load_dotenv
 import time
 
@@ -16,14 +14,11 @@ import time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 # ===================== 配置 =====================
-load_dotenv()
+load_dotenv()  # 自动读取 .env 文件
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-PORT = int(os.getenv("PORT", 8000))
-
-if not BOT_TOKEN or not WEBHOOK_URL:
-    logging.error("❌ BOT_TOKEN or WEBHOOK_URL not found in .env")
-    raise ValueError("BOT_TOKEN or WEBHOOK_URL missing!")
+if not BOT_TOKEN:
+    logging.error("❌ BOT_TOKEN not found in .env or environment variables")
+    raise ValueError("BOT_TOKEN not found!")
 
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
@@ -205,8 +200,7 @@ async def handle_text(message: types.Message):
 
             user_state.pop(uid, None)
     except Exception as e:
-       logging.error(f"handle_text error: {e}")
-
+        logging.error(f"handle_text error: {e}")
 
 # ===================== 定时清理照片文件夹 =====================
 async def cleanup_photos():
@@ -220,29 +214,15 @@ async def cleanup_photos():
                     logging.info(f"Deleted old photo: {filename}")
         except Exception as e:
             logging.error(f"cleanup_photos error: {e}")
-        await asyncio.sleep(3600)
+        await asyncio.sleep(3600)  # 每小时检查一次
 
-# ===================== Webhook 启动 =====================
-async def on_startup(app):
+# ===================== 启动 =====================
+async def main():
+    logging.info("✅ Bot started...")
     await set_bot_commands()
-    await bot.delete_webhook()
-    await bot.set_webhook(WEBHOOK_URL)
+    # 启动清理任务
     asyncio.create_task(cleanup_photos())
-    logging.info("✅ Bot started with webhook...")
-
-async def on_shutdown(app):
-    await bot.delete_webhook()
-    await bot.session.close()
-
-app = web.Application()
-SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/")
-app.on_startup.append(on_startup)
-app.on_shutdown.append(on_shutdown)
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    web.run_app(app, host="0.0.0.0", port=PORT)
-
-
-
-
-
+    asyncio.run(main())
