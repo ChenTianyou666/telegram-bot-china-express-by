@@ -7,6 +7,8 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFil
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiohttp import web
 from dotenv import load_dotenv
 import time
 
@@ -14,8 +16,11 @@ import time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 # ===================== 配置 =====================
-load_dotenv()  # 自动读取 .env 文件
+load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # 例: https://chinaexpressby.com/
+PORT = int(os.getenv("PORT", 8000))
+
 if not BOT_TOKEN:
     logging.error("❌ BOT_TOKEN not found in .env or environment variables")
     raise ValueError("BOT_TOKEN not found!")
@@ -200,29 +205,4 @@ async def handle_text(message: types.Message):
 
             user_state.pop(uid, None)
     except Exception as e:
-        logging.error(f"handle_text error: {e}")
-
-# ===================== 定时清理照片文件夹 =====================
-async def cleanup_photos():
-    while True:
-        try:
-            now = time.time()
-            for filename in os.listdir("photos"):
-                filepath = os.path.join("photos", filename)
-                if os.path.isfile(filepath) and now - os.path.getmtime(filepath) > 24*3600:  # 24小时
-                    os.remove(filepath)
-                    logging.info(f"Deleted old photo: {filename}")
-        except Exception as e:
-            logging.error(f"cleanup_photos error: {e}")
-        await asyncio.sleep(3600)  # 每小时检查一次
-
-# ===================== 启动 =====================
-async def main():
-    logging.info("✅ Bot started...")
-    await set_bot_commands()
-    # 启动清理任务
-    asyncio.create_task(cleanup_photos())
-    await dp.start_polling(bot)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        logging.error(f"handle_text error: {
